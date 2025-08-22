@@ -60,10 +60,38 @@ class _PLReportScreenState extends State<PLReportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profit & Loss Report'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF6F7FB),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(86),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7C3AED), Color(0xFF2563EB), Color(0xFF06B6D4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            titleSpacing: 0,
+            toolbarHeight: 86,
+            title: const Padding(
+              padding: EdgeInsets.only(top: 10.0),
+              child: Text(
+                'Profit & Loss Report',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -72,6 +100,7 @@ class _PLReportScreenState extends State<PLReportScreen> {
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // You can add Date Pickers here later for custom ranges
                   Text(
@@ -80,6 +109,7 @@ class _PLReportScreenState extends State<PLReportScreen> {
                       fontStyle: FontStyle.italic,
                       color: Colors.grey,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   _buildReportCard(

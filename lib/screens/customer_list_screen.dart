@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'add_customer_screen.dart';
 import 'customer_details_screen.dart';
+// V-- REMOVED: The business selection dialog is no longer needed here.
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
@@ -13,87 +14,62 @@ class CustomerListScreen extends StatefulWidget {
   State<CustomerListScreen> createState() => _CustomerListScreenState();
 }
 
-class _CustomerListScreenState extends State<CustomerListScreen> {
+class _CustomerListScreenState extends State<CustomerListScreen>
+    with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
   bool _isLoading = true;
   List<dynamic> _customers = [];
-  String? _businessId;
-  String? _businessName;
 
-  // State for search and sort
   final TextEditingController _searchController = TextEditingController();
   String _sortBy = 'created_at';
   String _sortOrder = 'DESC';
 
+  late final AnimationController _pageAnim;
+
   @override
   void initState() {
     super.initState();
-    // Add a listener to fetch data whenever search text changes
-    _searchController.addListener(() {
-      // You might want to add a debounce here in a real app to avoid excessive API calls
-      _fetchData();
-    });
+    _pageAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..forward();
     _fetchData();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _pageAnim.dispose();
     super.dispose();
   }
 
   Future<void> _fetchData() async {
-    // Only set loading to true on the initial fetch, not for every search keystroke
-    if (_searchController.text.isEmpty) {
-      setState(() {
-        _isLoading = true;
-      });
-    }
-
+    if (!mounted) return;
+    setState(() => _isLoading = true);
     try {
       final token = Provider.of<AuthProvider>(context, listen: false).token!;
-      final businesses = await _apiService.getMyBusinesses(token);
-      if (businesses.isEmpty) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _customers = []; // Ensure customers list is empty
-          });
-        }
-        return;
-      }
-      final firstBusiness = businesses[0];
-      final businessId = firstBusiness['id']
-          .toString(); // Ensure ID is a string if needed
-      final customers = await _apiService.getCustomersByBusiness(
-        businessId,
+
+      final customers = await _apiService.getAllMyCustomers(
         token,
-        search: _searchController.text,
+        search: _searchController.text.trim(),
         sortBy: _sortBy,
         sortOrder: _sortOrder,
       );
 
-      if (mounted) {
-        setState(() {
-          _customers = customers;
-          _businessId = businessId;
-          _businessName = firstBusiness['name'];
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _customers = customers;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        // Optionally show a snackbar on error
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load customers: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load customers: $e'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
     }
   }
 
@@ -109,19 +85,16 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             _buildSortOption(
               context,
               title: 'Sort by Newest',
-              groupValue: '$_sortBy:$_sortOrder',
               value: 'created_at:DESC',
             ),
             _buildSortOption(
               context,
               title: 'Sort by Name (A-Z)',
-              groupValue: '$_sortBy:$_sortOrder',
               value: 'name:ASC',
             ),
             _buildSortOption(
               context,
               title: 'Sort by Name (Z-A)',
-              groupValue: '$_sortBy:$_sortOrder',
               value: 'name:DESC',
             ),
           ],
@@ -133,10 +106,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   Widget _buildSortOption(
     BuildContext context, {
     required String title,
-    required String groupValue,
     required String value,
   }) {
-    final bool isSelected = groupValue == value;
+    final isSelected = '$_sortBy:$_sortOrder' == value;
     return ListTile(
       title: Text(
         title,
@@ -160,59 +132,127 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     );
   }
 
+  // This function is now much shorter and correctly handles global customer creation.
   void _navigateToAddCustomer() async {
-    if (_businessId == null) return;
+    // Directly navigate to the global AddCustomerScreen.
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => AddCustomerScreen(businessId: _businessId!),
+        builder: (context) => const AddCustomerScreen(), // No businessId needed
       ),
     );
+
+    // If a customer was added, refresh the list.
     if (result == true) _fetchData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F7FB),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(86),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7C3AED), Color(0xFF2563EB), Color(0xFF06B6D4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            titleSpacing: 0,
+            toolbarHeight: 86,
+            title: const Padding(
+              padding: EdgeInsets.only(top: 10.0),
+              child: Text(
+                'All Customers',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _fetchData,
+        color: Colors.teal,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            if (_isLoading)
+              const SliverFillRemaining(
+                child: Center(
+                  child: CircularProgressIndicator(color: Colors.teal),
+                ),
+              )
+            else if (_customers.isEmpty)
+              SliverFillRemaining(child: _buildEmptyState())
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) =>
+                      _buildCustomerListItem(_customers[index], index),
+                  childCount: _customers.length,
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToAddCustomer,
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text(
+          'New Customer',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
   }
 
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          // <-- REMOVED: Redundant title, which is now in the AppBar
-          Text(
-            'Manage your customer relationships.',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search by name or phone...',
+                prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onSubmitted: (_) => _fetchData(),
+            ),
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search by name or phone...',
-                    prefixIcon: Icon(Icons.search, color: Colors.grey.shade500),
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              InkWell(
-                onTap: _showSortOptions,
+          const SizedBox(width: 12),
+          InkWell(
+            onTap: _showSortOptions,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(Icons.sort, color: Colors.grey.shade600),
-                ),
               ),
-            ],
+              child: Icon(Icons.sort, color: Colors.grey.shade600),
+            ),
           ),
         ],
       ),
@@ -277,7 +317,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          customer['name'],
+                          customer['name'] ?? 'Unknown',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -286,6 +328,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                         const SizedBox(height: 4),
                         Text(
                           customer['phone_number'] ?? 'No phone number',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 14,
@@ -345,76 +389,12 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             child: Text(
               _searchController.text.isEmpty
                   ? "Tap the '+' button to add your first customer."
-                  : "Try adjusting your search or sort parameters.",
+                  : "Try adjusting your search parameters.",
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade500, fontSize: 16),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: AppBar(
-        // <-- MODIFIED: Styled AppBar for the top bar
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        centerTitle: true,
-        title: Text(
-          _businessName ?? 'Customers',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-            fontSize: 18,
-          ),
-        ),
-        // Add a subtle bottom border to separate the AppBar from the content
-        shape: Border(
-          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _fetchData,
-        color: Colors.teal,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader()),
-            if (_isLoading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(color: Colors.teal),
-                ),
-              )
-            else if (_customers.isEmpty)
-              SliverFillRemaining(child: _buildEmptyState())
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) =>
-                      _buildCustomerListItem(_customers[index], index),
-                  childCount: _customers.length,
-                ),
-              ),
-            // Add some padding at the bottom for the FAB
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToAddCustomer,
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text(
-          'New Customer',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }

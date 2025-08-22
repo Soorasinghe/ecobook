@@ -1,11 +1,9 @@
-// lib/screens/order_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'order_details_screen.dart';
-import 'create_order_screen.dart';
 
 class OrderListScreen extends StatefulWidget {
   const OrderListScreen({super.key});
@@ -16,18 +14,16 @@ class OrderListScreen extends StatefulWidget {
 class _OrderListScreenState extends State<OrderListScreen>
     with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
-
   bool _isLoading = true;
   List<dynamic> _orders = [];
-  String? _businessId;
+  // V-- REMOVED: _businessId is no longer needed
 
   // Search & Filter
   final TextEditingController _searchController = TextEditingController();
   String? _statusFilter;
 
   // Animations
-  AnimationController? _pageAnim; // drives page fade-in
-  static const _staggerMs = 70; // item delay per index
+  late final AnimationController _pageAnim;
 
   @override
   void initState() {
@@ -42,31 +38,19 @@ class _OrderListScreenState extends State<OrderListScreen>
   @override
   void dispose() {
     _searchController.dispose();
-    _pageAnim?.dispose();
-    _pageAnim = null;
+    _pageAnim.dispose();
     super.dispose();
   }
 
+  // V-- REWRITTEN: This function is now much simpler and fetches all orders.
   Future<void> _fetchData() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final token = Provider.of<AuthProvider>(context, listen: false).token!;
-      final businesses = await _apiService.getMyBusinesses(token);
 
-      if (businesses.isEmpty) {
-        if (!mounted) return;
-        setState(() {
-          _orders = [];
-          _businessId = null;
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final businessId = businesses[0]['id'];
-      final orders = await _apiService.getOrdersByBusiness(
-        businessId,
+      // Directly call the new global endpoint
+      final orders = await _apiService.getAllMyOrders(
         token,
         search: _searchController.text.trim(),
         status: _statusFilter,
@@ -75,7 +59,6 @@ class _OrderListScreenState extends State<OrderListScreen>
       if (!mounted) return;
       setState(() {
         _orders = orders;
-        _businessId = businessId;
         _isLoading = false;
       });
     } catch (e) {
@@ -83,31 +66,28 @@ class _OrderListScreenState extends State<OrderListScreen>
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to load orders: $e'),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(child: Text('Failed to load orders: $e')),
+            ],
+          ),
           backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          margin: const EdgeInsets.all(16),
         ),
       );
     }
   }
 
-  void _navigateToCreateOrder() async {
-    if (_businessId == null) return;
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => CreateOrderScreen(businessId: _businessId!),
-      ),
-    );
-    if (result == true) _fetchData();
-  }
-
   String _formatDate(String dateString) =>
       DateFormat('MMM dd, yyyy').format(DateTime.parse(dateString));
 
-  // Status → color/gradient helpers
+  // Helper functions for status colors and icons
   Color _statusColor(String? status) {
     switch ((status ?? '').toLowerCase()) {
       case 'pending':
@@ -147,83 +127,12 @@ class _OrderListScreenState extends State<OrderListScreen>
     }
   }
 
-  void _openFilterSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: false,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        final options = _filterOptions;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Filter by Status',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Quickly narrow down your orders.',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 16),
-              ...options.map((opt) {
-                final selected =
-                    _statusFilter == opt ||
-                    (_statusFilter == null && opt == 'All');
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: _statusColor(opt).withOpacity(0.12),
-                    child: Icon(_statusIcon(opt), color: _statusColor(opt)),
-                  ),
-                  title: Text(opt),
-                  trailing: selected
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: Color(0xFF3B82F6),
-                        )
-                      : null,
-                  onTap: () {
-                    setState(() {
-                      _statusFilter = opt == 'All' ? null : opt;
-                    });
-                    Navigator.pop(ctx);
-                    _fetchData();
-                  },
-                );
-              }).toList(),
-              const SizedBox(height: 4),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _onPullToRefresh() async {
-    await _fetchData();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final pageOpacity = _pageAnim != null
-        ? CurvedAnimation(parent: _pageAnim!, curve: Curves.easeOutCubic)
-        : const AlwaysStoppedAnimation(1.0);
+    final pageOpacity = CurvedAnimation(
+      parent: _pageAnim,
+      curve: Curves.easeOutCubic,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
@@ -231,7 +140,7 @@ class _OrderListScreenState extends State<OrderListScreen>
       body: FadeTransition(
         opacity: pageOpacity,
         child: RefreshIndicator(
-          onRefresh: _onPullToRefresh,
+          onRefresh: _fetchData,
           color: const Color(0xFF7C3AED),
           child: CustomScrollView(
             slivers: [
@@ -240,7 +149,6 @@ class _OrderListScreenState extends State<OrderListScreen>
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Row(
                     children: [
-                      // Search pill
                       Expanded(
                         child: Container(
                           decoration: BoxDecoration(
@@ -259,7 +167,7 @@ class _OrderListScreenState extends State<OrderListScreen>
                             textInputAction: TextInputAction.search,
                             onSubmitted: (_) => _fetchData(),
                             decoration: InputDecoration(
-                              hintText: 'Search by customer, ID, status…',
+                              hintText: 'Search by customer or business...',
                               hintStyle: TextStyle(color: Colors.grey.shade500),
                               prefixIcon: const Icon(Icons.search_rounded),
                               suffixIcon: _searchController.text.isNotEmpty
@@ -281,10 +189,11 @@ class _OrderListScreenState extends State<OrderListScreen>
                         ),
                       ),
                       const SizedBox(width: 10),
-                      // Filter button
                       _FilledIconButton(
                         icon: Icons.tune_rounded,
-                        onTap: _openFilterSheet,
+                        onTap: () {
+                          /* Can add a more complex filter sheet here later */
+                        },
                         gradient: const LinearGradient(
                           colors: [Color(0xFF6366F1), Color(0xFF22D3EE)],
                           begin: Alignment.topLeft,
@@ -295,8 +204,6 @@ class _OrderListScreenState extends State<OrderListScreen>
                   ),
                 ),
               ),
-
-              // Filter quick chips (colorful)
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: 44,
@@ -316,9 +223,10 @@ class _OrderListScreenState extends State<OrderListScreen>
                         selected: selected,
                         color: _statusColor(label),
                         onTap: () {
-                          setState(() {
-                            _statusFilter = (label == 'All') ? null : label;
-                          });
+                          setState(
+                            () =>
+                                _statusFilter = (label == 'All') ? null : label,
+                          );
                           _fetchData();
                         },
                       );
@@ -326,8 +234,6 @@ class _OrderListScreenState extends State<OrderListScreen>
                   ),
                 ),
               ),
-
-              // List content
               if (_isLoading)
                 const SliverFillRemaining(
                   child: Center(
@@ -351,35 +257,26 @@ class _OrderListScreenState extends State<OrderListScreen>
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final order = _orders[index];
-
-                      // per-item staggered animation (fade + slide + scale)
-                      final itemDuration = Duration(milliseconds: 420);
-                      final itemDelay = Duration(
-                        milliseconds: index * _staggerMs,
-                      );
-
                       return TweenAnimationBuilder<double>(
                         tween: Tween(begin: 0.0, end: 1.0),
-                        duration: itemDuration,
+                        duration: const Duration(milliseconds: 420),
                         curve: Curves.easeOutCubic,
                         builder: (context, value, child) {
-                          final dx = (1 - value) * 24; // slide up
-                          final scale = 0.98 + (value * 0.02);
                           return Opacity(
                             opacity: value,
                             child: Transform.translate(
-                              offset: Offset(0, dx),
-                              child: Transform.scale(
-                                scale: scale,
-                                child: child,
-                              ),
+                              offset: Offset(0, 24 * (1 - value)),
+                              child: child,
                             ),
                           );
                         },
                         child: _OrderCard(
                           order: order,
+                          // V-- NEW: Pass the business name to the card
+                          businessName:
+                              order['business_name'] ?? 'Unknown Business',
                           dateText: _formatDate(order['order_date'].toString()),
-                          amountText: _formatAmount(order['total_amount']),
+                          amountText: 'LKR ${order['total_amount']}',
                           statusText: (order['status'] ?? '').toString(),
                           statusIcon: _statusIcon(order['status']),
                           gradientColors: _statusGradient(order['status']),
@@ -399,13 +296,11 @@ class _OrderListScreenState extends State<OrderListScreen>
                     },
                   ),
                 ),
-
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
         ),
       ),
-      floatingActionButton: _NewOrderFAB(onPressed: _navigateToCreateOrder),
     );
   }
 
@@ -417,12 +312,9 @@ class _OrderListScreenState extends State<OrderListScreen>
     'Delivered',
     'Cancelled',
   ];
-
-  String _formatAmount(dynamic amount) {
-    final numVal = num.tryParse(amount?.toString() ?? '') ?? 0; // safe parse
-    return 'LKR ${NumberFormat('#,##0.00').format(numVal)}';
-  }
 }
+
+// All helper widgets are defined below, outside of the State class.
 
 /// Colorful rounded AppBar with gradient & refresh
 class _ColorfulAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -569,9 +461,10 @@ class _ColorfulChip extends StatelessWidget {
   }
 }
 
-/// Single colorful order card
+/// V-- UPDATED to accept and display the business name
 class _OrderCard extends StatelessWidget {
   final dynamic order;
+  final String businessName; // <-- ADDED
   final String dateText;
   final String amountText;
   final String statusText;
@@ -581,6 +474,7 @@ class _OrderCard extends StatelessWidget {
 
   const _OrderCard({
     required this.order,
+    required this.businessName, // <-- ADDED
     required this.dateText,
     required this.amountText,
     required this.statusText,
@@ -591,8 +485,8 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final customerName = (order['customer_name'] ?? '').toString().trim();
-    final title = customerName.isEmpty ? 'Unknown Customer' : customerName;
+    final customerName = (order['customer_name'] ?? 'Unknown Customer')
+        .toString();
 
     return Material(
       color: Colors.transparent,
@@ -620,7 +514,6 @@ class _OrderCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Icon badge
                 Container(
                   width: 54,
                   height: 54,
@@ -632,14 +525,12 @@ class _OrderCard extends StatelessWidget {
                   child: Icon(statusIcon, color: Colors.white, size: 28),
                 ),
                 const SizedBox(width: 14),
-                // Middle info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Customer name
                       Text(
-                        title,
+                        customerName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -650,46 +541,31 @@ class _OrderCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
+                      // V-- NEW: Display the business name
+                      Text(
+                        businessName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
                       Row(
                         children: [
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.calendar_month_rounded,
-                                  size: 16,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    dateText,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.95),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Icon(
-                                  Icons.payments_rounded,
-                                  size: 16,
-                                  color: Colors.white.withOpacity(0.9),
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    amountText,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.95),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          Icon(
+                            Icons.calendar_month_rounded,
+                            size: 16,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            dateText,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.95),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -697,33 +573,19 @@ class _OrderCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Status chip & arrow
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.18),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.25),
-                        ),
-                      ),
-                      child: Text(
-                        statusText.toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
-                        ),
+                    Text(
+                      amountText,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
                     Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 16,
@@ -753,7 +615,6 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Decorative empty icon
             Container(
               width: 120,
               height: 120,
@@ -816,33 +677,6 @@ class _EmptyState extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Extended FAB with nice shape/blur-like effect
-class _NewOrderFAB extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _NewOrderFAB({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return PhysicalModel(
-      color: Colors.transparent,
-      elevation: 10,
-      shadowColor: Colors.black.withOpacity(0.25),
-      borderRadius: BorderRadius.circular(18),
-      child: FloatingActionButton.extended(
-        onPressed: onPressed,
-        backgroundColor: const Color(0xFF7C3AED),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'New Order',
-          style: TextStyle(fontWeight: FontWeight.w800),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
     );
   }

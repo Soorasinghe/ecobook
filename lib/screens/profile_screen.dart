@@ -59,10 +59,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Profile'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF6F7FB),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(86),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7C3AED), Color(0xFF2563EB), Color(0xFF06B6D4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            titleSpacing: 0,
+            toolbarHeight: 86,
+            title: const Padding(
+              padding: EdgeInsets.only(top: 10.0),
+              child: Text(
+                'My Profile',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -73,16 +101,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16.0),
                 children: [
-                  _buildProfileDetail('Full Name', _profileData!['full_name']),
-                  _buildProfileDetail('Email', _profileData!['email']),
-                  const Divider(height: 32),
-                  _buildProfileDetail(
+                  _buildProfileCard(
+                    'Full Name',
+                    _profileData!['full_name'],
+                    Icons.person,
+                  ),
+                  _buildProfileCard(
+                    'Email',
+                    _profileData!['email'],
+                    Icons.email,
+                  ),
+                  _buildProfileCard(
                     'First Name',
                     _profileData!['first_name'],
+                    Icons.account_circle,
                   ),
-                  _buildProfileDetail('Last Name', _profileData!['last_name']),
-                  _buildProfileDetail('NIC', _profileData!['nic']),
-                  _buildProfileDetail('Mobile', _profileData!['mobile_number']),
+                  _buildProfileCard(
+                    'Last Name',
+                    _profileData!['last_name'],
+                    Icons.account_circle_outlined,
+                  ),
+                  _buildProfileCard('NIC', _profileData!['nic'], Icons.badge),
+                  _buildProfileCard(
+                    'Mobile',
+                    _profileData!['mobile_number'],
+                    Icons.phone,
+                  ),
+                  _buildProfileCard(
+                    'District',
+                    _profileData!['district'],
+                    Icons.location_city,
+                  ),
+                  _buildProfileCard(
+                    'Province',
+                    _profileData!['province'],
+                    Icons.map,
+                  ),
+                  _buildProfileCard(
+                    'Postal Code',
+                    _profileData!['postal_code'],
+                    Icons.markunread_mailbox,
+                  ),
+                  _buildProfileCard(
+                    'Payment Details',
+                    _profileData!['payment_details'],
+                    Icons.qr_code,
+                  ),
                   const SizedBox(height: 32),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.edit),
@@ -100,12 +164,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileDetail(String label, String? value) {
-    return ListTile(
-      title: Text(label, style: const TextStyle(color: Colors.grey)),
-      subtitle: Text(
-        value ?? 'Not set',
-        style: Theme.of(context).textTheme.titleLarge,
+  Widget _buildProfileCard(String label, String? value, IconData icon) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.only(bottom: 14),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: const Color(0xFF7C3AED),
+          child: Icon(icon, color: Colors.white),
+        ),
+        title: Text(label, style: const TextStyle(color: Colors.grey)),
+        subtitle: Text(
+          (value == null || value.isEmpty) ? 'Not set' : value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
       ),
     );
   }

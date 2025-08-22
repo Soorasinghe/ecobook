@@ -70,12 +70,40 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _businessName != null ? 'Suppliers for $_businessName' : 'Suppliers',
+      backgroundColor: const Color(0xFFF6F7FB),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(86),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7C3AED), Color(0xFF2563EB), Color(0xFF06B6D4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            titleSpacing: 0,
+            toolbarHeight: 86,
+            title: Padding(
+              padding: const EdgeInsets.only(top: 10.0),
+              child: Text(
+                _businessName != null
+                    ? 'Suppliers for $_businessName'
+                    : 'Suppliers',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
         ),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -95,7 +123,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                           child: ListTile(
                             leading: const Icon(
                               Icons.local_shipping,
-                              color: Colors.teal,
+                              color: Color(0xFF7C3AED),
                             ),
                             title: Text(
                               supplier['name'],
@@ -125,7 +153,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddSupplier,
-        backgroundColor: Colors.teal,
+        backgroundColor: const Color(0xFF7C3AED),
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
         tooltip: 'Add Supplier',

@@ -252,7 +252,8 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> getOrdersByBusiness(
+  Future<Map<String, dynamic>> getOrdersByBusiness(
+    // <-- Changed from List<dynamic> to Map<String, dynamic>
     String businessId,
     String token, {
     String? search,
@@ -542,6 +543,107 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to load top performers.');
+    }
+  }
+
+  Future<Map<String, dynamic>> getOrderReport(
+    String businessId,
+    String startDate,
+    String endDate,
+    String sortBy,
+    String sortOrder,
+    String token,
+  ) async {
+    // ... (the rest of the function is the same, it already returns a Map)
+    final uri = Uri.parse(
+      '$_baseUrl/reports/order-report'
+      '?businessId=$businessId&startDate=$startDate&endDate=$endDate&sortBy=$sortBy&sortOrder=$sortOrder',
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load order report.');
+    }
+  }
+
+  Future<void> registerUser(String name, String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/auth/register'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'name': name,
+        'email': email,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode != 201) {
+      // If the server returns an error, parse the message if possible
+      final errorData = jsonDecode(response.body);
+      throw Exception('Failed to register: ${errorData.toString()}');
+    }
+  }
+
+  Future<List<dynamic>> getAllMyCustomers(
+    String token, {
+    String search = '',
+    String sortBy = 'created_at',
+    String sortOrder = 'DESC',
+  }) async {
+    // Note the new endpoint path: /customers/all
+    final uri = Uri.parse('$_baseUrl/customers/all').replace(
+      queryParameters: {
+        'search': search,
+        'sortBy': sortBy,
+        'sortOrder': sortOrder,
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load all customers');
+    }
+  }
+
+  Future<List<dynamic>> getAllMyOrders(
+    String token, {
+    String? search,
+    String? status,
+  }) async {
+    var uri = Uri.parse('$_baseUrl/orders/all');
+    final Map<String, dynamic> queryParams = {};
+    if (search != null && search.isNotEmpty) queryParams['search'] = search;
+    if (status != null) queryParams['status'] = status;
+
+    if (queryParams.isNotEmpty) {
+      uri = uri.replace(queryParameters: queryParams);
+    }
+
+    final response = await http.get(
+      uri,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load all orders');
     }
   }
 }

@@ -202,10 +202,38 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Order #${widget.orderId.substring(0, 8)}'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF6F7FB),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(86),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7C3AED), Color(0xFF2563EB), Color(0xFF06B6D4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            titleSpacing: 0,
+            toolbarHeight: 86,
+            title: Padding(
+              padding: const EdgeInsets.only(top: 10.0),
+              child: Text(
+                'Order #${widget.orderId.substring(0, 8)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -214,32 +242,109 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildDetailRow('Customer:', _orderDetails!['customer_name']),
-                  _buildDetailRow(
-                    'Phone:',
-                    _orderDetails!['phone_number'] ?? 'N/A',
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(
+                        Icons.person,
+                        color: Color(0xFF7C3AED),
+                      ),
+                      title: const Text('Customer'),
+                      subtitle: Text(
+                        _orderDetails!['customer_name'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
                   ),
-                  _buildDetailRow('Status:', _orderDetails!['status']),
-                  _buildDetailRow('Payment:', _orderDetails!['payment_status']),
-                  const Divider(height: 32, thickness: 1),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(
+                        Icons.phone,
+                        color: Color(0xFF2563EB),
+                      ),
+                      title: const Text('Phone'),
+                      subtitle: Text(
+                        _orderDetails!['phone_number'] ?? 'N/A',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(Icons.info, color: Color(0xFF06B6D4)),
+                      title: const Text('Status'),
+                      subtitle: Text(
+                        _orderDetails!['status'],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(
+                        Icons.payment,
+                        color: Color(0xFF7C3AED),
+                      ),
+                      title: const Text('Payment'),
+                      subtitle: Text(
+                        _orderDetails!['payment_status'],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   const Text(
                     'Items in Order',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  for (var item in (_orderDetails!['items'] as List))
-                    Card(
+                  ...(_orderDetails!['items'] as List).map<Widget>(
+                    (item) => Card(
                       elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: ListTile(
-                        title: Text(item['product_name']),
+                        title: Text(
+                          item['product_name'],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         subtitle: Text(
                           'Price: LKR ${item['price_at_purchase']}',
                         ),
                         trailing: Text('Qty: ${item['quantity']}'),
                       ),
                     ),
+                  ),
                   const Divider(height: 32, thickness: 1),
                   Align(
                     alignment: Alignment.centerRight,
@@ -280,8 +385,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       ),
                     ),
                   ),
-
-                  // V-- 3. THIS IS THE NEW REMINDER BUTTON (CONDITIONALLY) --V
                   if (_orderDetails!['payment_status'] == 'Unpaid')
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
@@ -302,22 +405,6 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey[700])),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -149,10 +149,38 @@ class _CashbookScreenState extends State<CashbookScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cashbook'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF6F7FB),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(86),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7C3AED), Color(0xFF2563EB), Color(0xFF06B6D4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(26)),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            titleSpacing: 0,
+            toolbarHeight: 86,
+            title: Padding(
+              padding: const EdgeInsets.only(top: 10.0),
+              child: const Text(
+                'Cashbook',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -161,8 +189,11 @@ class _CashbookScreenState extends State<CashbookScreen> {
                 Card(
                   margin: const EdgeInsets.all(16.0),
                   elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(20.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -194,32 +225,46 @@ class _CashbookScreenState extends State<CashbookScreen> {
                             ),
                           )
                         : ListView.builder(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             itemCount: _transactions.length,
                             itemBuilder: (context, index) {
                               final tx = _transactions[index];
-                              // V-- THE FIX IS HERE --V
                               final amount = double.parse(tx['amount']);
                               final isIncome = amount >= 0;
-
-                              return ListTile(
-                                leading: Icon(
-                                  isIncome
-                                      ? Icons.arrow_downward
-                                      : Icons.arrow_upward,
-                                  color: isIncome ? Colors.green : Colors.red,
+                              return Card(
+                                elevation: 1,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                title: Text(tx['description']),
-                                subtitle: Text(
-                                  DateFormat('MMM dd, yyyy').format(
-                                    DateTime.parse(tx['transaction_date']),
-                                  ),
-                                ),
-                                trailing: Text(
-                                  // V-- AND THE FIX IS HERE --V
-                                  'LKR ${amount.toStringAsFixed(2)}',
-                                  style: TextStyle(
+                                child: ListTile(
+                                  leading: Icon(
+                                    isIncome
+                                        ? Icons.arrow_downward
+                                        : Icons.arrow_upward,
                                     color: isIncome ? Colors.green : Colors.red,
-                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  title: Text(
+                                    tx['description'],
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    DateFormat('MMM dd, yyyy').format(
+                                      DateTime.parse(tx['transaction_date']),
+                                    ),
+                                  ),
+                                  trailing: Text(
+                                    'LKR ${amount.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      color: isIncome
+                                          ? Colors.green
+                                          : Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               );

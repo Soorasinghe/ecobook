@@ -1,45 +1,60 @@
-// lib/screens/login_screen.dart
+// lib/screens/registration_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
-import 'tabs_screen.dart'; // Changed from home_screen to tabs_screen
-import 'registration_screen.dart'; // <-- 1. IMPORT THE NEW SCREEN
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegistrationScreen extends StatefulWidget {
+  const RegistrationScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegistrationScreenState extends State<RegistrationScreen> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
-  void _login() async {
+  void _register() async {
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All fields are required.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final email = _emailController.text;
-      final password = _passwordController.text;
-      final token = await _apiService.loginUser(email, password);
-
-      await Provider.of<AuthProvider>(context, listen: false).login(token);
-
-      // Navigate to the main TabsScreen, replacing the LoginScreen
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (ctx) => const TabsScreen()),
+      await _apiService.registerUser(
+        _nameController.text,
+        _emailController.text,
+        _passwordController.text,
       );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration Successful! Please log in.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Go back to the login screen
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to login: ${e.toString()}'),
+            content: Text('Registration failed: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -57,16 +72,25 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login to EcoBook'),
+        title: const Text('Create Account'),
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Full Name',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person),
+              ),
+            ),
+            const SizedBox(height: 16.0),
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(
@@ -88,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 24.0),
             ElevatedButton(
-              onPressed: _isLoading ? null : _login,
+              onPressed: _isLoading ? null : _register,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 backgroundColor: Colors.teal,
@@ -96,19 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               child: _isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('LOGIN'),
-            ),
-
-            // V-- 2. ADD THIS NEW BUTTON --V
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (ctx) => const RegistrationScreen(),
-                  ),
-                );
-              },
-              child: const Text('Don\'t have an account? Sign Up'),
+                  : const Text('REGISTER'),
             ),
           ],
         ),

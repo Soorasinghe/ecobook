@@ -5,9 +5,8 @@ import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
 
 class AddCustomerScreen extends StatefulWidget {
-  final String businessId;
-
-  const AddCustomerScreen({super.key, required this.businessId});
+  // V-- CHANGED: No longer needs businessId. It's a global action.
+  const AddCustomerScreen({super.key});
 
   @override
   State<AddCustomerScreen> createState() => _AddCustomerScreenState();
@@ -37,13 +36,16 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
     try {
       final token = Provider.of<AuthProvider>(context, listen: false).token!;
+
+      // V-- CHANGED: customerData no longer includes a businessId.
+      // The backend now handles assigning the customer to the logged-in user.
       final customerData = {
-        'businessId': widget.businessId,
         'name': _nameController.text,
         'phoneNumber': _phoneController.text,
         'email': _emailController.text,
         'address': _addressController.text,
       };
+
       await _apiService.createCustomer(customerData, token);
       Navigator.of(context).pop(true); // Pop screen and signal success
     } catch (e) {
@@ -54,10 +56,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         ),
       );
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 
